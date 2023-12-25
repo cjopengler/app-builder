@@ -22,7 +22,7 @@ from appbuilder.core.components.gbi.basic import GBISessionRecord
 
 SUPER_MARKET_SCHEMA = """
 ```
-CREATE TABLE `超市营收明细` (
+CREATE TABLE `超市营收明细表` (
   `订单编号` varchar(32) DEFAULT NULL,
   `订单日期` date DEFAULT NULL,
   `邮寄方式` varchar(32) DEFAULT NULL,
@@ -84,7 +84,7 @@ class TestGBISelectTable(unittest.TestCase):
 
         self.select_table_node = \
             appbuilder.GBISelectTable(model_name=model_name,
-                                      table_descriptions={"超市营收明细": "超市营收明细表，包含超市各种信息等",
+                                      table_descriptions={"超市营收明细表": "超市营收明细表，包含超市各种信息等",
                                                           "product_sales_info": "产品销售表"})
 
     def test_run_with_default_param(self):
