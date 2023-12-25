@@ -16,8 +16,7 @@ from appbuilder.core.message import Message
 from appbuilder.core.components.gbi.basic import GBISessionRecord
 
 #  设置环境变量
-os.environ["APPBUILDER_TOKEN"] = "bce-v3/ALTAK-tpJqnbAvTivWEAclPibrT/4ac0ef025903f00e9252a0c41b803b41372a4862"
-os.environ["GATEWAY_URL"] = "https://apaas-api.test.baidu-int.com"
+os.environ["APPBUILDER_TOKEN"] = "***"
 
 SUPER_MARKET_SCHEMA = """
 ```

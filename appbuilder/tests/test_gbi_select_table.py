@@ -68,11 +68,6 @@ PROMPT_TEMPLATE = """
 回答:
 """
 
-os.environ["APPBUILDER_TOKEN"] = "bce-v3/ALTAK-tpJqnbAvTivWEAclPibrT/4ac0ef025903f00e9252a0c41b803b41372a4862"
-# os.environ["GATEWAY_URL"] = "http://127.0.0.1:8919"
-os.environ["GATEWAY_URL"] = "http://10.216.119.167:8919"
-os.environ["GATEWAY_URL"] = "https://apaas-api.test.baidu-int.com"
-
 
 class TestGBISelectTable(unittest.TestCase):
 
