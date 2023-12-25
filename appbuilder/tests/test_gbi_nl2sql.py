@@ -17,7 +17,7 @@ import unittest
 import os
 import appbuilder
 from appbuilder.core.message import Message
-from appbuilder.core.components.gbi.basic import GBILocalSession, NL2SqlResult, GBISessionRecord
+from appbuilder.core.components.gbi.basic import NL2SqlResult, GBISessionRecord
 from appbuilder.core.components.gbi.basic import ColumnItem
 
 SUPER_MARKET_SCHEMA = """
@@ -72,6 +72,7 @@ PROMPT_TEMPLATE = """
 os.environ["APPBUILDER_TOKEN"] = "bce-v3/ALTAK-tpJqnbAvTivWEAclPibrT/4ac0ef025903f00e9252a0c41b803b41372a4862"
 os.environ["GATEWAY_URL"] = "http://127.0.0.1:8919"
 # os.environ["GATEWAY_URL"] = "http://10.216.119.167:8919"
+os.environ["GATEWAY_URL"] = "https://apaas-api.test.baidu-int.com"
 
 
 class TestGBINL2Sql(unittest.TestCase):
@@ -89,14 +90,13 @@ class TestGBINL2Sql(unittest.TestCase):
         """测试 run 方法使用有效参数"""
         query = "列出商品类别是水果的所有信息"
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
         result_message = self.nl2sql_node(message=msg, session=session)
         print(result_message.content.sql)
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
         self.assertTrue(result_message.content.llm_result != "")
 
-    @unittest.skip("ok")
     def test_run_with_knowledge(self):
         """测试 增加 knowledge 参数"""
 
@@ -104,28 +104,26 @@ class TestGBINL2Sql(unittest.TestCase):
         query = "列出商品类别是水果的的利润率"
 
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
         result_message = self.nl2sql_node(message=msg, session=session)
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
         self.assertTrue(result_message.content.llm_result != "")
         self.nl2sql_node.knowledge = dict()
 
-    @unittest.skip("ok")
     def test_run_with_column_constraint(self):
         """测试 增加 column constraint  参数"""
 
         query = "列出商品类别是水果的的利润率"
 
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
         column_constraint = [ColumnItem(ori_value="水果",
                                         column_value="新鲜水果",
                                         column_name="商品类别",
                                         table_name="超市营收明细",
                                         is_like=False)]
         result_message = self.nl2sql_node(message=msg, session=session, column_constraint=column_constraint)
-
 
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
@@ -138,7 +136,7 @@ class TestGBINL2Sql(unittest.TestCase):
         query = "列出商品类别是水果的的利润率"
 
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
         column_constraint = [ColumnItem(ori_value="水果",
                                         column_value="新鲜水果",
                                         column_name="商品类别",
@@ -153,14 +151,14 @@ class TestGBINL2Sql(unittest.TestCase):
 
     def test_run_with_session(self):
         """测试 增加 session  参数"""
-        session = GBILocalSession(session_id="123")
+        session = list()
         session_record = GBISessionRecord(query="列出商品类别是水果的的利润率",
                                           answer=NL2SqlResult(
                                               llm_result="根据问题分析得到 sql 如下: \n "
                                                          "```sql\nSELECT * FROM `超市营收明细` "
                                                          "WHERE `商品类别` = '水果'\n```",
                                               sql="SELECT * FROM `超市营收明细` WHERE `商品类别` = '水果'"))
-        session.records.append(session_record)
+        session.append(session_record)
 
         query = "列出所有的商品类别"
         msg = Message(query)

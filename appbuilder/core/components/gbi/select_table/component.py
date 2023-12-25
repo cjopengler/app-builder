@@ -21,28 +21,39 @@ from pydantic import BaseModel, Field
 
 from appbuilder.core.component import Component
 from appbuilder.core.message import Message
-from appbuilder.core.components.gbi.basic import GBILocalSession
+from appbuilder.core.components.gbi.basic import GBISessionRecord
+from appbuilder.core.components.gbi.basic import SUPPORTED_MODEL_NAME
 
 
 class GBISelectTable(Component):
     """
-    gib nl2sql
+    gbi 选表
     """
 
     def __init__(self, model_name: str, table_descriptions: Dict[str, str],
                  prompt_template: str = "",
                  secret_key: Optional[str] = None,
                  gateway: str = ""):
+        """
+        创建 GBI 选表对象
+        Args:
+            model_name: 支持的模型名字 ERNIE-Bot 4.0, ERNIE-Bot-8K, ERNIE-Bot, ERNIE-Bot-turbo, EB-turbo-AppBuilder
+            table_descriptions:
+            prompt_template:
+            secret_key:
+            gateway:
+        """
         super().__init__(secret_key=secret_key, gateway=gateway)
+        if model_name not in SUPPORTED_MODEL_NAME:
+            raise ValueError(f"model_name 错误， 请使用 {SUPPORTED_MODEL_NAME} 中的大模型")
         self.model_name = model_name
-        self.server_sub_path = "gbi_select_table"
-        self.prefix = "/v1/"
+        self.server_sub_path = "/v1/ai_engine/gbi/v1/gbi_select_table"
         self.table_descriptions = table_descriptions
         self.prompt_template = prompt_template
 
     def run(self,
             message: Message,
-            session: GBILocalSession) -> Message[List[str]]:
+            session: List[GBISessionRecord]) -> Message[List[str]]:
         """
 
         :param message:
@@ -64,7 +75,7 @@ class GBISelectTable(Component):
 
         return Message(content=rsp_data)
 
-    def _run_select_table(self, query: str, session: GBILocalSession,
+    def _run_select_table(self, query: str, session: List[GBISessionRecord],
                           prompt_template,
                           table_descriptions: Dict[str, str],
                           model_name: str,
@@ -89,11 +100,11 @@ class GBISelectTable(Component):
 
         payload = {"query": query,
                    "table_descriptions": table_descriptions,
-                   "session": [session_record.to_json() for session_record in session.records],
+                   "session": [session_record.to_json() for session_record in session],
                    "model_name": model_name,
                    "prompt_template": prompt_template}
 
-        server_url = self.service_url(prefix=self.prefix, sub_path=self.server_sub_path)
+        server_url = self.service_url(sub_path=self.server_sub_path)
         response = self.s.post(url=server_url, headers=headers,
                                json=payload, timeout=timeout)
         super().check_response_header(response)
@@ -103,3 +114,4 @@ class GBISelectTable(Component):
         request_id = self.response_request_id(response)
         response.request_id = request_id
         return response
+

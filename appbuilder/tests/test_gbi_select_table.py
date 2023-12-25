@@ -17,7 +17,7 @@ import unittest
 import os
 import appbuilder
 from appbuilder.core.message import Message
-from appbuilder.core.components.gbi.basic import GBILocalSession
+from appbuilder.core.components.gbi.basic import GBISessionRecord
 
 
 SUPER_MARKET_SCHEMA = """
@@ -55,9 +55,23 @@ CREATE TABLE `product_sales_info` (
 ```
 """
 
+PROMPT_TEMPLATE = """
+你是一个专业的业务人员，下面有{num}张表，具体表名如下:
+{table_desc}
+请根据问题帮我选择上述1-{num}种的其中相关表并返回，可以为多表，也可以为单表,
+返回多张表请用“,”隔开
+返回格式请参考如下示例：
+问题:有多少个审核通过的投运单？
+回答: ```DWD_MAT_OPERATION```
+请严格参考示例只不要返回无关内容，直接给出最终答案后面的内容，分析步骤不要输出
+问题:{query}
+回答:
+"""
+
 os.environ["APPBUILDER_TOKEN"] = "bce-v3/ALTAK-tpJqnbAvTivWEAclPibrT/4ac0ef025903f00e9252a0c41b803b41372a4862"
 # os.environ["GATEWAY_URL"] = "http://127.0.0.1:8919"
 os.environ["GATEWAY_URL"] = "http://10.216.119.167:8919"
+os.environ["GATEWAY_URL"] = "https://apaas-api.test.baidu-int.com"
 
 
 class TestGBISelectTable(unittest.TestCase):
@@ -77,7 +91,7 @@ class TestGBISelectTable(unittest.TestCase):
         """测试 run 方法使用有效参数"""
         query = "列出超市中的所有数据"
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
         result_message = self.select_table_node(message=msg, session=session)
         print(result_message.content)
         self.assertIsNotNone(result_message)
@@ -85,14 +99,17 @@ class TestGBISelectTable(unittest.TestCase):
         self.assertEqual(result_message.content[0], "超市营收明细表")
 
     def test_run_with_prompt_template(self):
-        """测试 run 方法使用有效参数"""
+        """测试 run 方法中 prompt template 模版"""
         query = "列出超市中的所有数据"
         msg = Message(query)
-        session = GBILocalSession(session_id="1")
+        session = list()
+        self.select_table_node.prompt_template = PROMPT_TEMPLATE
         result_message = self.select_table_node(message=msg, session=session)
+
         self.assertIsNotNone(result_message)
         self.assertEqual(len(result_message.content), 1)
         self.assertEqual(result_message.content[0], "超市营收明细表")
+        self.select_table_node.prompt_template = ""
 
 
 if __name__ == '__main__':
