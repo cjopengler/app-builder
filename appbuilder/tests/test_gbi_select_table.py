@@ -17,8 +17,8 @@ import unittest
 import os
 import appbuilder
 from appbuilder.core.message import Message
-from appbuilder.core.components.gbi.session import Session
-from appbuilder.core.components.gbi.column import ColumnItem
+from appbuilder.core.components.gbi.basic import GBILocalSession
+
 
 SUPER_MARKET_SCHEMA = """
 ```
@@ -77,7 +77,18 @@ class TestGBISelectTable(unittest.TestCase):
         """测试 run 方法使用有效参数"""
         query = "列出超市中的所有数据"
         msg = Message(query)
-        session = Session(session_id="1")
+        session = GBILocalSession(session_id="1")
+        result_message = self.select_table_node(message=msg, session=session)
+        print(result_message.content)
+        self.assertIsNotNone(result_message)
+        self.assertEqual(len(result_message.content), 1)
+        self.assertEqual(result_message.content[0], "超市营收明细表")
+
+    def test_run_with_prompt_template(self):
+        """测试 run 方法使用有效参数"""
+        query = "列出超市中的所有数据"
+        msg = Message(query)
+        session = GBILocalSession(session_id="1")
         result_message = self.select_table_node(message=msg, session=session)
         self.assertIsNotNone(result_message)
         self.assertEqual(len(result_message.content), 1)

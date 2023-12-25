@@ -19,11 +19,9 @@ import json
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from appbuilder.core.component import Component, ComponentArguments
+from appbuilder.core.component import Component
 from appbuilder.core.message import Message
-from appbuilder.core._exception import AppBuilderServerException
-from appbuilder.core.components.gbi.session import Session
-from appbuilder.core.components.gbi.column import ColumnItem
+from appbuilder.core.components.gbi.basic import GBILocalSession
 
 
 class GBISelectTable(Component):
@@ -32,6 +30,7 @@ class GBISelectTable(Component):
     """
 
     def __init__(self, model_name: str, table_descriptions: Dict[str, str],
+                 prompt_template: str = "",
                  secret_key: Optional[str] = None,
                  gateway: str = ""):
         super().__init__(secret_key=secret_key, gateway=gateway)
@@ -39,10 +38,11 @@ class GBISelectTable(Component):
         self.server_sub_path = "gbi_select_table"
         self.prefix = "/v1/"
         self.table_descriptions = table_descriptions
+        self.prompt_template = prompt_template
 
     def run(self,
             message: Message,
-            session: Session) -> Message[List[str]]:
+            session: GBILocalSession) -> Message[List[str]]:
         """
 
         :param message:
@@ -54,6 +54,7 @@ class GBISelectTable(Component):
         session = session
 
         response = self._run_select_table(query=query, session=session,
+                                          prompt_template=self.prompt_template,
                                           table_descriptions=self.table_descriptions,
                                           model_name=self.model_name,
                                           timeout=60,
@@ -63,7 +64,9 @@ class GBISelectTable(Component):
 
         return Message(content=rsp_data)
 
-    def _run_select_table(self, query: str, session: Session, table_descriptions: Dict[str, str],
+    def _run_select_table(self, query: str, session: GBILocalSession,
+                          prompt_template,
+                          table_descriptions: Dict[str, str],
                           model_name: str,
                           timeout: float = None, retry: int = 0):
         """
@@ -86,8 +89,9 @@ class GBISelectTable(Component):
 
         payload = {"query": query,
                    "table_descriptions": table_descriptions,
-                   "session": session.records,
-                   "model_name": model_name}
+                   "session": [session_record.to_json() for session_record in session.records],
+                   "model_name": model_name,
+                   "prompt_template": prompt_template}
 
         server_url = self.service_url(prefix=self.prefix, sub_path=self.server_sub_path)
         response = self.s.post(url=server_url, headers=headers,

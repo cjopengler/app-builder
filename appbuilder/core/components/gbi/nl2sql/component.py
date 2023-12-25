@@ -22,18 +22,9 @@ from pydantic import BaseModel, Field
 from appbuilder.core.component import Component, ComponentArguments
 from appbuilder.core.message import Message
 from appbuilder.core._exception import AppBuilderServerException
-from appbuilder.core.components.gbi.session import Session
-from appbuilder.core.components.gbi.column import ColumnItem
-
-
-class NL2SqlResult(object):
-
-    def __init__(self, llm_result: str, sql: str):
-        self.llm_result = llm_result
-        self.sql = sql
-
-    def to_json(self) -> Dict:
-        return self.__dict__
+from appbuilder.core.components.gbi.basic import GBILocalSession
+from appbuilder.core.components.gbi.basic import ColumnItem
+from appbuilder.core.components.gbi.basic import NL2SqlResult
 
 
 class GBINL2Sql(Component):
@@ -42,6 +33,7 @@ class GBINL2Sql(Component):
     """
 
     def __init__(self, model_name: str, table_schemas: List[str], knowledge: Dict = None,
+                 prompt_template: str = "",
                  secret_key: Optional[str] = None,
                  gateway: str = ""):
         super().__init__(secret_key=secret_key, gateway=gateway)
@@ -50,10 +42,11 @@ class GBINL2Sql(Component):
         self.prefix = "/v1/"
         self.table_schemas = table_schemas
         self.knowledge = knowledge or dict()
+        self.prompt_template = prompt_template
 
     def run(self,
             message: Message,
-            session: Session,
+            session: GBILocalSession,
             column_constraint: List[ColumnItem] = None) -> Message[NL2SqlResult]:
         """
 
@@ -69,6 +62,7 @@ class GBINL2Sql(Component):
 
         response = self._run_nl2sql(query=query, session=session, table_schemas=self.table_schemas,
                                     column_constraint=column_constraint, knowledge=self.knowledge,
+                                    prompt_template=self.prompt_template,
                                     model_name=self.model_name,
                                     timeout=100,
                                     retry=2)
@@ -78,7 +72,8 @@ class GBINL2Sql(Component):
                                      sql=rsp_data["sql"])
         return Message(content=nl2sql_result)
 
-    def _run_nl2sql(self, query: str, session: Session, table_schemas: List[str], knowledge: Dict[str, str],
+    def _run_nl2sql(self, query: str, session: GBILocalSession, table_schemas: List[str], knowledge: Dict[str, str],
+                    prompt_template: str,
                     column_constraint: List[ColumnItem],
                     model_name: str,
                     timeout: float = None, retry: int = 0):
@@ -95,19 +90,21 @@ class GBINL2Sql(Component):
         """
 
         headers = self.auth_header()
-        headers["Content_Type"] = "application/json"
+        headers["Content-Type"] = "application/json"
 
         if retry != self.retry.total:
             self.retry.total = retry
 
         payload = {"query": query,
                    "table_schemas": table_schemas,
-                   "session": list(),
+                   "session": [session_record.to_json() for session_record in session.records],
                    "column_constraint": [column_item.to_json() for column_item in column_constraint],
                    "model_name": model_name,
-                   "knowledge": knowledge}
+                   "knowledge": knowledge,
+                   "prompt_template": prompt_template}
 
         server_url = self.service_url(prefix=self.prefix, sub_path=self.server_sub_path)
+        server_url = "https://apaas-api.test.baidu-int.com/rpc/2.0/cloud_hub/v1/ai_engine/gbi/v1/gbi_nl2sql"
         response = self.s.post(url=server_url, headers=headers,
                                json=payload, timeout=timeout)
         super().check_response_header(response)

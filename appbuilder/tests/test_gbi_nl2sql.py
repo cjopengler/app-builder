@@ -17,8 +17,8 @@ import unittest
 import os
 import appbuilder
 from appbuilder.core.message import Message
-from appbuilder.core.components.gbi.session import Session
-from appbuilder.core.components.gbi.column import ColumnItem
+from appbuilder.core.components.gbi.basic import GBILocalSession, NL2SqlResult, GBISessionRecord
+from appbuilder.core.components.gbi.basic import ColumnItem
 
 SUPER_MARKET_SCHEMA = """
 ```
@@ -55,9 +55,23 @@ CREATE TABLE `product_sales_info` (
 ```
 """
 
+PROMPT_TEMPLATE = """
+  MySql 表 Schema 如下:
+  {schema}
+  请根据用户当前问题，联系历史信息，仅编写1个sql，其中 sql 语句需要使用```sql ```这种 markdown 形式给出。
+  请参考列选信息：
+  {instrument}
+  请参考知识:
+  {kg}
+  当前时间：{date}
+  历史信息如下:{history_prompt}
+  当前问题："{query}"
+  回答：
+"""
+
 os.environ["APPBUILDER_TOKEN"] = "bce-v3/ALTAK-tpJqnbAvTivWEAclPibrT/4ac0ef025903f00e9252a0c41b803b41372a4862"
-# os.environ["GATEWAY_URL"] = "http://127.0.0.1:8919"
-os.environ["GATEWAY_URL"] = "http://10.216.119.167:8919"
+os.environ["GATEWAY_URL"] = "http://127.0.0.1:8919"
+# os.environ["GATEWAY_URL"] = "http://10.216.119.167:8919"
 
 
 class TestGBINL2Sql(unittest.TestCase):
@@ -75,8 +89,9 @@ class TestGBINL2Sql(unittest.TestCase):
         """测试 run 方法使用有效参数"""
         query = "列出商品类别是水果的所有信息"
         msg = Message(query)
-        session = Session(session_id="1")
+        session = GBILocalSession(session_id="1")
         result_message = self.nl2sql_node(message=msg, session=session)
+        print(result_message.content.sql)
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
         self.assertTrue(result_message.content.llm_result != "")
@@ -89,7 +104,7 @@ class TestGBINL2Sql(unittest.TestCase):
         query = "列出商品类别是水果的的利润率"
 
         msg = Message(query)
-        session = Session(session_id="1")
+        session = GBILocalSession(session_id="1")
         result_message = self.nl2sql_node(message=msg, session=session)
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
@@ -103,7 +118,27 @@ class TestGBINL2Sql(unittest.TestCase):
         query = "列出商品类别是水果的的利润率"
 
         msg = Message(query)
-        session = Session(session_id="1")
+        session = GBILocalSession(session_id="1")
+        column_constraint = [ColumnItem(ori_value="水果",
+                                        column_value="新鲜水果",
+                                        column_name="商品类别",
+                                        table_name="超市营收明细",
+                                        is_like=False)]
+        result_message = self.nl2sql_node(message=msg, session=session, column_constraint=column_constraint)
+
+
+        self.assertIsNotNone(result_message)
+        self.assertTrue(result_message.content.sql != "")
+        self.assertTrue(result_message.content.llm_result != "")
+        self.assertIn("新鲜水果", result_message.content.sql)
+
+    def test_run_with_prompt_template(self):
+        """测试 增加 prompt template  参数"""
+        self.nl2sql_node.prompt_template = PROMPT_TEMPLATE
+        query = "列出商品类别是水果的的利润率"
+
+        msg = Message(query)
+        session = GBILocalSession(session_id="1")
         column_constraint = [ColumnItem(ori_value="水果",
                                         column_value="新鲜水果",
                                         column_name="商品类别",
@@ -113,17 +148,26 @@ class TestGBINL2Sql(unittest.TestCase):
         self.assertIsNotNone(result_message)
         self.assertTrue(result_message.content.sql != "")
         self.assertTrue(result_message.content.llm_result != "")
-        self.assertIn("新鲜水果", result_message.content.sql)
+        # 恢复 prompt template
+        self.nl2sql_node.prompt_template = ""
 
-    @unittest.skip("ok")
-    def test_run_with_prompt_template(self):
-        """测试 增加 prompt template  参数"""
-        pass
-
-    @unittest.skip("ok")
     def test_run_with_session(self):
         """测试 增加 session  参数"""
-        pass
+        session = GBILocalSession(session_id="123")
+        session_record = GBISessionRecord(query="列出商品类别是水果的的利润率",
+                                          answer=NL2SqlResult(
+                                              llm_result="根据问题分析得到 sql 如下: \n "
+                                                         "```sql\nSELECT * FROM `超市营收明细` "
+                                                         "WHERE `商品类别` = '水果'\n```",
+                                              sql="SELECT * FROM `超市营收明细` WHERE `商品类别` = '水果'"))
+        session.records.append(session_record)
+
+        query = "列出所有的商品类别"
+        msg = Message(query)
+        result_message = self.nl2sql_node(message=msg, session=session, column_constraint=list())
+        self.assertIsNotNone(result_message)
+        self.assertTrue(result_message.content.sql != "")
+        self.assertTrue(result_message.content.llm_result != "")
 
 
 if __name__ == '__main__':
